@@ -1,0 +1,47 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/g++",
+      "-c",
+      "-Wall",
+      "-std=c++20",
+      "-g",
+      "-o",
+      "main.o",
+      "main.cpp"
+    ],
+    "directory": "/home/zfn/repos/my/my-pcap",
+    "file": "/home/zfn/repos/my/my-pcap/main.cpp",
+    "output": "/home/zfn/repos/my/my-pcap/main.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/g++",
+      "-c",
+      "-Wall",
+      "-std=c++20",
+      "-g",
+      "-o",
+      "addr_conv.o",
+      "addr_conv.cpp"
+    ],
+    "directory": "/home/zfn/repos/my/my-pcap",
+    "file": "/home/zfn/repos/my/my-pcap/addr_conv.cpp",
+    "output": "/home/zfn/repos/my/my-pcap/addr_conv.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/g++",
+      "-c",
+      "-Wall",
+      "-std=c++20",
+      "-g",
+      "-o",
+      "output.o",
+      "output.cpp"
+    ],
+    "directory": "/home/zfn/repos/my/my-pcap",
+    "file": "/home/zfn/repos/my/my-pcap/output.cpp",
+    "output": "/home/zfn/repos/my/my-pcap/output.o"
+  }
+]
