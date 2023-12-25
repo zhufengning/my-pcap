@@ -1,5 +1,6 @@
 #include "output.hpp"
 #include "addr_conv.hpp"
+#include "counter.hpp"
 #include <arpa/inet.h>
 #include <iomanip>
 #include <iostream>
@@ -12,6 +13,7 @@
 #include <unordered_set>
 
 extern std::unordered_set<std::string> global_mac_list;
+extern struct PacketCounter global_counter;
 
 void print_line() { std::cout << "-----------" << std::endl; }
 
@@ -42,6 +44,11 @@ uint16_t print_eth(struct ether_header *ethhead, bool prt) {
 std::tuple<uint8_t, unsigned int> print_ip(struct ip *iphead, bool prt) {
   std::string sh(inet_ntoa(iphead->ip_src));
   std::string dh(inet_ntoa(iphead->ip_dst));
+  // check if dst is broadcast
+  global_counter.ip_bytes += ntohs(iphead->ip_len);
+  if (iphead->ip_dst.s_addr == 0xffffffff) {
+    global_counter.ipv4_boardcast++;
+  }
   if (prt) {
     print_split("IP head:");
     print_table("Source host", sh);
@@ -51,6 +58,7 @@ std::tuple<uint8_t, unsigned int> print_ip(struct ip *iphead, bool prt) {
 }
 
 uint8_t print_ipv6(struct ip6_hdr *iphead, bool prt) {
+  global_counter.ip_bytes += ntohs(iphead->ip6_ctlun.ip6_un1.ip6_un1_plen);
   char buffer[INET6_ADDRSTRLEN];
   inet_ntop(AF_INET6, &iphead->ip6_src, buffer, INET6_ADDRSTRLEN);
   std::string sh(buffer);

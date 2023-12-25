@@ -1,8 +1,10 @@
 #include "addr_conv.hpp"
+#include "counter.hpp"
 #include "cxxopts.hpp"
 #include "output.hpp"
 #include <arpa/inet.h>
 #include <cstdint>
+#include <ctime>
 #include <errno.h>
 #include <format>
 #include <linux/bpf_common.h>
@@ -29,9 +31,7 @@
 
 cxxopts::ParseResult opts;
 
-struct PacketCounter {
-  unsigned all, udp, tcp, icmp, arp;
-} global_counter;
+struct PacketCounter global_counter = {0};
 
 std::unordered_set<std::string> global_mac_list;
 
@@ -40,10 +40,38 @@ void my_handler(int s) {
   for (auto v : global_mac_list) {
     std::cout << v << std::endl;
   }
+  global_counter.end_time = std::time(nullptr);
+  print_split("Summary");
+  print_table("All", global_counter.all);
+  print_table("Start time",
+              std::asctime(std::localtime(&global_counter.start_time)));
+  print_table("End time",
+              std::asctime(std::localtime(&global_counter.end_time)));
+  auto duration = global_counter.end_time - global_counter.start_time;
+  print_table("Duration(sec)", duration);
+  print_table("Total eth packets", global_counter.all);
+  print_table("Eth runt frames", global_counter.eth_runt_frame);
+  print_table("Eth jumbo", global_counter.eth_jumbo_frame);
+  print_table("Total bytes", global_counter.bytes);
+  print_table("Speed(byte/sec)", global_counter.bytes / duration);
+  print_table("Packet speed(packet/sec)", global_counter.all / duration);
+  print_table("Total arp packets", global_counter.arp);
+  print_table("Total ip packets", global_counter.ip);
+  print_table("Total ip bytes", global_counter.ip_bytes);
+  print_table("Total ipv4 boardcast packets", global_counter.ipv4_boardcast);
+  print_table("Total ip6 packets", global_counter.ip6);
+  print_table("Total udp packets", global_counter.udp);
+  print_table("Total tcp packets", global_counter.tcp);
+  print_table("Total icmp packets", global_counter.icmp);
+  print_table("Total icmp redirect packets", global_counter.icmp_redirect);
+  print_table("Total icmp destination unreach packets",
+              global_counter.icmp_destination_unreach);
+
   exit(1);
 }
 
 int init() {
+  global_counter.start_time = std::time(nullptr);
 
   struct sigaction sigIntHandler;
 
@@ -123,11 +151,15 @@ int init() {
 void process_ip_payload(unsigned int protocol, uint8_t *buffer) {
   switch (protocol) {
   case 1: {
-
+    global_counter.icmp++;
     if (opts["picmp"].as<bool>() || opts["all"].as<bool>()) {
       print_split("icmp");
       struct icmphdr *icmp_header = (struct icmphdr *)(buffer);
-
+      if (icmp_header->type == ICMP_REDIRECT) {
+        global_counter.icmp_redirect++;
+      } else if (icmp_header->type == ICMP_DEST_UNREACH) {
+        global_counter.icmp_destination_unreach++;
+      }
       // 输出 ICMP 类型
       print_table("Type", (unsigned int)icmp_header->type);
 
@@ -140,7 +172,7 @@ void process_ip_payload(unsigned int protocol, uint8_t *buffer) {
     }
   }
   case 6: {
-
+    global_counter.tcp++;
     if (opts["ptcp"].as<bool>() || opts["all"].as<bool>()) {
       print_split("tcp");
       struct tcphdr *tcp_header = (struct tcphdr *)(buffer);
@@ -179,6 +211,7 @@ void process_ip_payload(unsigned int protocol, uint8_t *buffer) {
     }
   }
   case 17: {
+    global_counter.udp++;
     if (opts["pudp"].as<bool>() || opts["all"].as<bool>()) {
       print_split("udp");
       struct udphdr *udp_header = (struct udphdr *)(buffer);
@@ -206,6 +239,7 @@ void process_frame(uint8_t buffer[]) {
 
   switch (eth_type) {
   case 0x800: {
+    global_counter.ip++;
     auto [protocol, hl] =
         print_ip((struct ip *)(buffer + 14),
                  opts["pip"].as<bool>() || opts["all"].as<bool>());
@@ -213,6 +247,7 @@ void process_frame(uint8_t buffer[]) {
     break;
   }
   case 0x806: {
+    global_counter.arp++;
     if (opts["parp"].as<bool>() || opts["all"].as<bool>()) {
       print_split("arp");
 
@@ -253,6 +288,7 @@ void process_frame(uint8_t buffer[]) {
     break;
   }
   case 0x86dd:
+    global_counter.ip6++;
     auto protocol =
         print_ipv6((struct ip6_hdr *)(buffer + 14),
                    opts["pip"].as<bool>() || opts["all"].as<bool>());
@@ -296,12 +332,13 @@ int main(int argc, char **argv) {
   while (1) {
     n = recvfrom(sock, buffer, 10240, 0, NULL, NULL);
     print_split(std::format("{} bytes read", n));
-
-    if (n < 42) {
-      perror("recvfrom():");
-      printf("Incomplete packet (errno is %d)\n", errno);
-      close(sock);
-      exit(0);
+    global_counter.all++;
+    global_counter.bytes += n;
+    // Detect jumbo frames and runt frames
+    if (n > ETH_FRAME_LEN) {
+      global_counter.eth_jumbo_frame++;
+    } else if (n < 64) {
+      global_counter.eth_runt_frame++;
     }
 
     // std::cout << std::format("cont: {}\n", ++cnt);
