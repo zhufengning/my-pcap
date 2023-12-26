@@ -43,5 +43,17 @@
     "directory": "/home/zfn/repos/my/my-pcap",
     "file": "/home/zfn/repos/my/my-pcap/output.cpp",
     "output": "/home/zfn/repos/my/my-pcap/output.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/gcc",
+      "-c",
+      "-o",
+      "syn_sender",
+      "syn_sender.c"
+    ],
+    "directory": "/home/zfn/repos/my/my-pcap",
+    "file": "/home/zfn/repos/my/my-pcap/syn_sender.c",
+    "output": "/home/zfn/repos/my/my-pcap/syn_sender"
   }
 ]

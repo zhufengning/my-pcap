@@ -26,3 +26,8 @@ print_table(T1 t1, T2 t2) {
 uint16_t print_eth(struct ether_header *ethhead, bool prt);
 std::tuple<uint8_t, unsigned int> print_ip(struct ip *iphead, bool prt);
 uint8_t print_ipv6(struct ip6_hdr *iphead, bool prt);
+
+void print_icmp(struct icmphdr *icmp_header);
+void print_tcp(struct tcphdr *tcp_header);
+void print_udp(struct udphdr *udp_header);
+void print_arp(struct arphdr *arp_header);
