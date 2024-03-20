@@ -35,6 +35,39 @@ struct PacketCounter global_counter = {0};
 
 std::unordered_set<std::string> global_mac_list;
 
+void print_hex(unsigned char *buffer, int n) {
+  int i;
+  for (i = 0; i < n; i++) {
+    // 每16个字节打印一行
+    if (i % 16 == 0)
+      printf("%08x: ", i);
+
+    // 打印一个字节的十六进制值
+    printf("%02x ", (unsigned char)buffer[i]);
+
+    // 每两个字节后，添加一个空格，如同xxd工具
+    if ((i + 1) % 2 == 0)
+      printf(" ");
+
+    // 每16个字节或者在结束处显示ASCII字符
+    if ((i + 1) % 16 == 0 || i == n - 1) {
+      int j;
+      // 结束处可能不够16个字节，用空格填充
+      while ((i + 1) % 16 != 0) {
+        printf("   ");
+        i++;
+      }
+      printf(" ");
+
+      // 打印ASCII字符表示，非打印字符替换为'.'
+      for (j = i - 15; j <= i; j++) {
+        putchar(isprint(buffer[j]) ? buffer[j] : '.');
+      }
+      printf("\n");
+    }
+  }
+}
+
 void my_handler(int s) {
   printf("Caught signal %d\n", s);
   for (auto v : global_mac_list) {
@@ -127,7 +160,7 @@ int init() {
       bpf_code_bin[i].jt = tjt;
       bpf_code_bin[i].jf = tjf;
 
-      std::cout << std::format("{} {} {} {}\n", bpf_code_bin[i].code,
+      std::cerr << std::format("{} {} {} {}\n", bpf_code_bin[i].code,
                                bpf_code_bin[i].jt, bpf_code_bin[i].jf,
                                bpf_code_bin[i].k);
     }
@@ -315,6 +348,8 @@ int main(int argc, char **argv) {
       "i,device", "Set device",
       cxxopts::value<std::string>()->default_value("eth0"))(
       "a,all", "Print many info",
+      cxxopts::value<bool>()->default_value("false"))(
+      "full", "Print hex of packet",
       cxxopts::value<bool>()->default_value("false"));
 
   opts = options.parse(argc, argv);
@@ -344,6 +379,10 @@ int main(int argc, char **argv) {
     // std::cout << std::format("cont: {}\n", ++cnt);
 
     process_frame(buffer);
+
+    if (opts["full"].as<bool>()) {
+      print_hex(buffer, n);
+    }
   }
   return 0;
 }
