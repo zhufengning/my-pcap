@@ -160,9 +160,9 @@ int init() {
       bpf_code_bin[i].jt = tjt;
       bpf_code_bin[i].jf = tjf;
 
-      std::cerr << std::format("{} {} {} {}\n", bpf_code_bin[i].code,
-                               bpf_code_bin[i].jt, bpf_code_bin[i].jf,
-                               bpf_code_bin[i].k);
+      // std::cout << std::format("{} {} {} {}\n", bpf_code_bin[i].code,
+      //                          bpf_code_bin[i].jt, bpf_code_bin[i].jf,
+      //                          bpf_code_bin[i].k);
     }
     struct sock_fprog Filter;
     // error prone code, .len field should be consistent with the real length of
@@ -186,77 +186,30 @@ void process_ip_payload(unsigned int protocol, uint8_t *buffer) {
   case 1: {
     global_counter.icmp++;
     if (opts["picmp"].as<bool>() || opts["all"].as<bool>()) {
-      print_split("icmp");
       struct icmphdr *icmp_header = (struct icmphdr *)(buffer);
       if (icmp_header->type == ICMP_REDIRECT) {
         global_counter.icmp_redirect++;
       } else if (icmp_header->type == ICMP_DEST_UNREACH) {
         global_counter.icmp_destination_unreach++;
       }
-      // 输出 ICMP 类型
-      print_table("Type", (unsigned int)icmp_header->type);
-
-      // 输出 ICMP 代码
-      print_table("Code", (unsigned int)icmp_header->code);
-
-      // 输出校验和
-      print_table("Checksum", ntohs(icmp_header->checksum));
+      print_icmp(icmp_header);
       break;
     }
   }
   case 6: {
     global_counter.tcp++;
     if (opts["ptcp"].as<bool>() || opts["all"].as<bool>()) {
-      print_split("tcp");
       struct tcphdr *tcp_header = (struct tcphdr *)(buffer);
 
-      print_table("Source Port", ntohs(tcp_header->source));
-      print_table("Destination Port", ntohs(tcp_header->dest));
-
-      // 输出序列号
-      print_table("Sequence Number", ntohl(tcp_header->seq));
-
-      print_table("Window Size", ntohs(tcp_header->window));
-      // 初始化一个空字符串来存储标志位信息
-      std::string flags;
-
-      // 逐个检查标志位
-      if (tcp_header->urg)
-        flags += "URG ";
-      if (tcp_header->ack)
-        flags += "ACK ";
-      if (tcp_header->psh)
-        flags += "PSH ";
-      if (tcp_header->rst)
-        flags += "RST ";
-      if (tcp_header->syn)
-        flags += "SYN ";
-      if (tcp_header->fin)
-        flags += "FIN ";
-
-      // 输出标志位字符串
-      print_table("Flags", flags);
-      // 输出确认号（如果 ACK 标志位设置了）
-      if (tcp_header->ack) {
-        print_table("Acknowledgment Number", ntohl(tcp_header->ack_seq));
-      }
+      print_tcp(tcp_header);
       break;
     }
   }
   case 17: {
     global_counter.udp++;
     if (opts["pudp"].as<bool>() || opts["all"].as<bool>()) {
-      print_split("udp");
       struct udphdr *udp_header = (struct udphdr *)(buffer);
-
-      // 输出源端口
-      print_table("Source Port", ntohs(udp_header->source));
-
-      // 输出目的端口
-      print_table("Destination Port", ntohs(udp_header->dest));
-
-      // 输出UDP长度
-      print_table("Length", ntohs(udp_header->len));
+      print_udp(udp_header);
       break;
     }
   }
@@ -282,41 +235,11 @@ void process_frame(uint8_t buffer[]) {
   case 0x806: {
     global_counter.arp++;
     if (opts["parp"].as<bool>() || opts["all"].as<bool>()) {
-      print_split("arp");
 
       struct arphdr *arp_header =
           (struct arphdr *)(buffer + 14); // ARP 头部紧随以太网头部之后
 
-      // 获取发送者和目标的硬件和协议地址
-      unsigned char *sender_hardware_address =
-          (unsigned char *)(arp_header + 1);
-      unsigned char *sender_protocol_address =
-          sender_hardware_address + arp_header->ar_hln;
-      unsigned char *target_hardware_address =
-          sender_protocol_address + arp_header->ar_pln;
-      unsigned char *target_protocol_address =
-          target_hardware_address + arp_header->ar_hln;
-      std::string sender_hw_addr = mac_to_str(sender_hardware_address);
-
-      std::string target_hw_addr = mac_to_str(target_hardware_address);
-
-      // 转换 IP 地址为可读格式
-      char sender_ip[INET_ADDRSTRLEN], target_ip[INET_ADDRSTRLEN];
-      inet_ntop(AF_INET, sender_protocol_address, sender_ip, sizeof(sender_ip));
-      inet_ntop(AF_INET, target_protocol_address, target_ip, sizeof(target_ip));
-
-      // 格式化并输出 ARP 信息
-      std::string arp_info;
-      if (ntohs(arp_header->ar_op) == ARPOP_REQUEST) {
-        arp_info = std::format("Request who-has {} tell {}", target_ip,
-                               sender_ip, sizeof(struct arphdr));
-      } else if (ntohs(arp_header->ar_op) == ARPOP_REPLY) {
-        arp_info = std::format("Reply {} is-at "
-                               "{}",
-                               sender_ip, mac_to_str(sender_hardware_address));
-      }
-
-      std::cout << arp_info << std::endl;
+      print_arp(arp_header);
     }
     break;
   }

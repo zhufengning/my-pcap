@@ -1,3 +1,5 @@
 *.o
 pcap
 .cache
+.gdb*
+syn_sender

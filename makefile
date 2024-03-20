@@ -13,11 +13,11 @@ CXXFLAGS = -Wall -std=c++20 -g
 .PHONY: all clean
 
 # Default target
-all: pcap
+all: pcap syn_sender
 
 # Clean target
 clean:
-	rm -f pcap *.o
+	rm -f pcap *.o syn_sender
 
 # Rules for building object files from C source files
 %.o: %.c
@@ -30,3 +30,6 @@ clean:
 # Rule for building the final executable
 pcap: $(objects)
 	$(CXX) $(objects) -o pcap
+
+syn_sender: syn_sender.c
+	$(CC) syn_sender.c -o syn_sender
