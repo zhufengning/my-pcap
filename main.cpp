@@ -45,9 +45,9 @@ void print_hex(unsigned char *buffer, int n) {
     // 打印一个字节的十六进制值
     printf("%02x ", (unsigned char)buffer[i]);
 
-    // 每两个字节后，添加一个空格，如同xxd工具
-    if ((i + 1) % 2 == 0)
-      printf(" ");
+    /* // 每两个字节后，添加一个空格，如同xxd工具 */
+    /* if ((i + 1) % 2 == 0) */
+    /*   printf(" "); */
 
     // 每16个字节或者在结束处显示ASCII字符
     if ((i + 1) % 16 == 0 || i == n - 1) {
@@ -60,7 +60,7 @@ void print_hex(unsigned char *buffer, int n) {
       printf(" ");
 
       // 打印ASCII字符表示，非打印字符替换为'.'
-      for (j = i - 15; j <= i; j++) {
+      for (j = i - 15; j <= std::min(i, n - 1); j++) {
         putchar(isprint(buffer[j]) ? buffer[j] : '.');
       }
       printf("\n");
